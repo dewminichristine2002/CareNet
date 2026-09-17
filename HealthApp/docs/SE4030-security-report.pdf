@@ -1,0 +1,401 @@
+%PDF-1.4
+%xE2xE3xCFxD3
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R 9 0 R 11 0 R 13 0 R] /Count 6 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 15 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 2490 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 790 Td
+(SE4030 - Secure Software Development) Tj T*
+(Security Assessment of HealthApp) Tj T*
+() Tj T*
+(Group members: [Add member names and index numbers]) Tj T*
+() Tj T*
+(Original project: [Add original GitHub repository URL and original commit/date]) Tj T*
+() Tj T*
+(Modified project: [Add modified GitHub repository URL]) Tj T*
+() Tj T*
+(Video: [Add YouTube URL, maximum 20 minutes]) Tj T*
+() Tj T*
+(---) Tj T*
+() Tj T*
+(1. Executive Summary) Tj T*
+() Tj T*
+(HealthApp is a healthcare management application built with Next.js, TypeScript, React, MongoDB,) Tj T*
+(and custom JWT authentication. It supports patients, doctors, pharmacists, and administrators.) Tj T*
+(The system processes sensitive healthcare information including medical records, prescriptions,) Tj T*
+(allergies, blood groups, emergency contacts, and appointment information.) Tj T*
+() Tj T*
+(This assessment identified eight distinct non-payment security vulnerabilities in the original) Tj T*
+(implementation. The findings cover broken access control, authentication bypass, weak) Tj T*
+(cryptography, secret management, object-level authorization, sensitive-data exposure, credential) Tj T*
+(disclosure, and security misconfiguration.) Tj T*
+() Tj T*
+(Payment-related vulnerabilities are intentionally excluded from this report scope.) Tj T*
+() Tj T*
+(2. Technology and Security Scope) Tj T*
+() Tj T*
+(- Next.js App Router) Tj T*
+(- TypeScript and React) Tj T*
+(- MongoDB database) Tj T*
+(- Custom JWT authentication using jose) Tj T*
+(- HTTP-only authentication cookie) Tj T*
+(- PBKDF2 password hashing) Tj T*
+(- Role-based patient, doctor, pharmacist, and administrator workflows) Tj T*
+(- API route handlers under app/api) Tj T*
+() Tj T*
+(The assessment used white-box source inspection. Black-box confirmation using OWASP ZAP and) Tj T*
+(regression tests should be added before final submission.) Tj T*
+() Tj T*
+(3. Vulnerability Summary) Tj T*
+() Tj T*
+(ID    Vulnerability    Severity    OWASP category    ) Tj T*
+() Tj T*
+(VULN-01    Privilege escalation during registration    Critical    A01 Broken Access Control    ) Tj T*
+(VULN-02    Middleware authentication bypass    Critical    A07 Identification and Authentication) Tj T*
+(Failures) Tj T*
+(VULN-03    Weak password hashing    High    A02 Cryptographic Failures    ) Tj T*
+(VULN-04    Hard-coded JWT secret fallback    Critical    A02 Cryptographic Failures    ) Tj T*
+ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 15 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 2803 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 790 Td
+(VULN-05    Broken object-level authorization / IDOR    High    A01 Broken Access Control    ) Tj T*
+(VULN-06    Excessive medical-data exposure    High    A01 Broken Access Control    ) Tj T*
+(VULN-07    Password-hash disclosure    High    A02 Cryptographic Failures    ) Tj T*
+(VULN-08    Security misconfiguration    Medium    A05 Security Misconfiguration    ) Tj T*
+() Tj T*
+(4. Detailed Findings) Tj T*
+() Tj T*
+(VULN-01: Privilege Escalation During Registration) Tj T*
+() Tj T*
+(Severity: Critical) Tj T*
+() Tj T*
+(Description: The public registration endpoint accepts the role value directly from the request.) Tj T*
+(A user can register as an administrator, doctor, or pharmacist without administrator approval.) Tj T*
+() Tj T*
+(Evidence: app/api/auth/register/route.ts accepts role from the request body, stores it in the) Tj T*
+(user document, and places it in the JWT.) Tj T*
+() Tj T*
+(Impact: An unauthenticated attacker can create a privileged account and access administrative or) Tj T*
+(staff functionality.) Tj T*
+() Tj T*
+(Recommended fix: Public registration must always create a patient account. Staff accounts should) Tj T*
+(be created only through an authenticated administrator workflow or invitation process. The) Tj T*
+(server must use an allowlist and must never trust a client-provided privileged role.) Tj T*
+() Tj T*
+(Verification evidence: Attempt registration with role: "admin"; the secure version should reject) Tj T*
+(the request or create only a patient account.) Tj T*
+() Tj T*
+(VULN-02: Middleware Authentication Bypass) Tj T*
+() Tj T*
+(Severity: Critical) Tj T*
+() Tj T*
+(Description: The middleware identifies public paths using pathname.startsWith\(path\). Since / is) Tj T*
+(included in publicPaths, every pathname starts with /. As a result, protected page routes can) Tj T*
+(bypass middleware authentication.) Tj T*
+() Tj T*
+(Evidence: middleware.ts defines const publicPaths = ["/auth/login", "/auth/register", "/"] and) Tj T*
+(checks pathname.startsWith\(path\).) Tj T*
+() Tj T*
+(Impact: Unauthenticated users may directly access protected application pages. API routes still) Tj T*
+(require their own checks, but the page-level security boundary is ineffective.) Tj T*
+() Tj T*
+(Recommended fix: Match exact public routes or use a safe route predicate. For example, compare) Tj T*
+(pathname === "/" instead of using startsWith for the root route. Add middleware tests for) Tj T*
+(anonymous access to every protected role area.) Tj T*
+() Tj T*
+(Verification evidence: Request /admin/dashboard, /doctor/dashboard, and /patient/dashboard) Tj T*
+(without a cookie. The secure version should redirect to login.) Tj T*
+() Tj T*
+(VULN-03: Weak Password Hashing) Tj T*
+() Tj T*
+ET
+
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 15 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 2659 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 790 Td
+(Severity: High) Tj T*
+() Tj T*
+(Description: Passwords are hashed with PBKDF2-HMAC-SHA512 using only 1,000 iterations. This is) Tj T*
+(substantially weaker than modern password-storage recommendations and makes offline cracking) Tj T*
+(cheaper if hashes are obtained.) Tj T*
+() Tj T*
+(Evidence: lib/password.ts calls pbkdf2 with 1000 iterations.) Tj T*
+() Tj T*
+(Impact: Compromised password hashes may be cracked more efficiently, especially when users reuse) Tj T*
+(passwords.) Tj T*
+() Tj T*
+(Recommended fix: Use a modern password hashing algorithm such as Argon2id or a properly) Tj T*
+(configured bcrypt cost factor. Store an algorithm/version marker so hashes can be upgraded after) Tj T*
+(successful login. Use constant-time comparison and enforce server-side password policy.) Tj T*
+() Tj T*
+(Verification evidence: Add tests confirming new passwords use the selected algorithm and that) Tj T*
+(legacy hashes are migrated safely.) Tj T*
+() Tj T*
+(VULN-04: Hard-Coded JWT Secret Fallback) Tj T*
+() Tj T*
+(Severity: Critical) Tj T*
+() Tj T*
+(Description: The JWT implementation uses your-secret-key-change-in-production when JWT_SECRET is) Tj T*
+(missing.) Tj T*
+() Tj T*
+(Evidence: lib/auth.ts defines the signing key using process.env.JWT_SECRET) Tj T*
+("your-secret-key-change-in-production".) Tj T*
+() Tj T*
+(Impact: If the environment variable is absent, an attacker who knows the source code can forge) Tj T*
+(tokens and impersonate any role, including administrators.) Tj T*
+() Tj T*
+(Recommended fix: Fail application startup when JWT_SECRET is missing or too short. Use a) Tj T*
+(high-entropy deployment secret, rotate secrets safely, and avoid embedding fallback credentials) Tj T*
+(in source code.) Tj T*
+() Tj T*
+(Verification evidence: Start the application without JWT_SECRET; the secure version should fail) Tj T*
+(configuration validation rather than start with a default key.) Tj T*
+() Tj T*
+(VULN-05: Broken Object-Level Authorization / IDOR) Tj T*
+() Tj T*
+(Severity: High) Tj T*
+() Tj T*
+(Description: Doctor-only creation endpoints accept arbitrary patient identifiers. They check the) Tj T*
+(caller's role but do not verify that the doctor is authorized to access the selected patient.) Tj T*
+() Tj T*
+(Evidence: app/api/medical-records/create/route.ts and the prescription creation route accept) Tj T*
+(patientId without checking a valid doctor-patient appointment, hospital relationship, or) Tj T*
+(treatment relationship.) Tj T*
+() Tj T*
+(Impact: A doctor account could create or manipulate records belonging to unrelated patients.) Tj T*
+ET
+
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 15 0 R >> >> /Contents 10 0 R >>
+endobj
+10 0 obj
+<< /Length 2668 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 790 Td
+(This violates confidentiality and integrity requirements for healthcare data.) Tj T*
+() Tj T*
+(Recommended fix: Centralize authorization checks. Confirm that the patient exists and that the) Tj T*
+(doctor has a valid appointment or approved clinical relationship. Apply the same checks to read,) Tj T*
+(create, update, and delete operations.) Tj T*
+() Tj T*
+(Verification evidence: Authenticate as Doctor A and submit a record for Patient B without a) Tj T*
+(relationship. The secure version should return 403 Forbidden.) Tj T*
+() Tj T*
+(VULN-06: Excessive Medical-Data Exposure) Tj T*
+() Tj T*
+(Severity: High) Tj T*
+() Tj T*
+(Description: Health-card scanning returns a broad collection of patient information, including) Tj T*
+(demographics, allergies, records, prescriptions, and appointments.) Tj T*
+() Tj T*
+(Evidence: app/api/health-card/scan/route.ts returns multiple sensitive healthcare datasets after) Tj T*
+(a card lookup.) Tj T*
+() Tj T*
+(Impact: A compromised or misused doctor account can access more personal health information than) Tj T*
+(necessary for a specific clinical task.) Tj T*
+() Tj T*
+(Recommended fix: Apply data minimization. Return only the fields required for the current) Tj T*
+(workflow, require an authorized relationship or appointment, add consent and audit logging, and) Tj T*
+(separate emergency access from ordinary access.) Tj T*
+() Tj T*
+(Verification evidence: Scan a card as an unrelated doctor. The secure version should deny access) Tj T*
+(or return only the minimum permitted fields.) Tj T*
+() Tj T*
+(VULN-07: Password-Hash Disclosure) Tj T*
+() Tj T*
+(Severity: High) Tj T*
+() Tj T*
+(Description: The admin staff endpoint returns staff documents without explicitly excluding the) Tj T*
+(password field. Even a password hash must not be exposed through an API response.) Tj T*
+() Tj T*
+(Evidence: app/api/admin/staff/route.ts returns staff documents without a password projection.) Tj T*
+() Tj T*
+(Impact: A compromised administrator session, frontend bug, logging system, or browser extension) Tj T*
+(could obtain password hashes and enable offline cracking.) Tj T*
+() Tj T*
+(Recommended fix: Use explicit response projections or DTOs that allow only safe fields. Never) Tj T*
+(return the password field from any endpoint. Add automated tests that recursively check) Tj T*
+(sensitive fields are absent from API responses.) Tj T*
+() Tj T*
+(Verification evidence: Call the staff endpoint as an administrator and confirm that no password) Tj T*
+(property is returned.) Tj T*
+() Tj T*
+(VULN-08: Security Misconfiguration) Tj T*
+() Tj T*
+ET
+
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 15 0 R >> >> /Contents 12 0 R >>
+endobj
+12 0 obj
+<< /Length 2894 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 790 Td
+(Severity: Medium) Tj T*
+() Tj T*
+(Description: The application does not visibly configure important HTTP security headers, and the) Tj T*
+(Next.js configuration ignores TypeScript and ESLint errors during builds.) Tj T*
+() Tj T*
+(Evidence: next.config.mjs disables build failure for TypeScript and ESLint errors. No) Tj T*
+(application-wide CSP, HSTS, frame protection, MIME-sniffing protection, or Referrer-Policy) Tj T*
+(configuration was identified.) Tj T*
+() Tj T*
+(Impact: Missing headers increase exposure to clickjacking, MIME confusion, information leakage,) Tj T*
+(and script-injection impact. Ignoring build errors can allow security defects to reach) Tj T*
+(deployment.) Tj T*
+() Tj T*
+(Recommended fix: Configure security headers in middleware or Next.js headers configuration.) Tj T*
+(Enable TypeScript and lint failures in CI and production builds. Add automated checks for) Tj T*
+(required headers.) Tj T*
+() Tj T*
+(Verification evidence: Inspect response headers with OWASP ZAP or browser developer tools and) Tj T*
+(confirm required headers are present in the secure version.) Tj T*
+() Tj T*
+(5. Additional Security Observations) Tj T*
+() Tj T*
+(The following issues should be assessed and may be included as additional findings after) Tj T*
+(testing:) Tj T*
+() Tj T*
+(- JWTs remain valid for seven days after logout because there is no revocation or token-version) Tj T*
+(mechanism.) Tj T*
+(- QR codes contain patient identifiers and have no expiry, signature, nonce, or revocation) Tj T*
+(mechanism.) Tj T*
+(- Password-change verification uses bcrypt while login uses PBKDF2, causing password changes to) Tj T*
+(fail for normal PBKDF2 users.) Tj T*
+(- State-changing cookie-authenticated APIs do not show explicit CSRF tokens or origin) Tj T*
+(validation.) Tj T*
+(- Several API routes perform minimal validation and have no visible rate limiting, pagination,) Tj T*
+(or request-size policy.) Tj T*
+(- Dependency vulnerabilities must be confirmed with pnpm audit before being reported as CVEs.) Tj T*
+(- SQL injection is not applicable because the application uses MongoDB. XSS and NoSQL injection) Tj T*
+(require black-box confirmation before being claimed.) Tj T*
+() Tj T*
+(6. Recommended Testing Plan) Tj T*
+() Tj T*
+(1. Create a baseline copy or Git tag of the original vulnerable implementation.) Tj T*
+(2. Add one security regression test for each vulnerability.) Tj T*
+(3. Use OWASP ZAP against a local test deployment.) Tj T*
+(4. Test anonymous access to protected pages.) Tj T*
+(5. Test role tampering during registration.) Tj T*
+(6. Test cross-patient medical-record requests.) Tj T*
+(7. Test sensitive-field leakage from admin endpoints.) Tj T*
+(8. Inspect security response headers.) Tj T*
+(9. Run pnpm audit and record the result separately from source-code findings.) Tj T*
+ET
+
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 15 0 R >> >> /Contents 14 0 R >>
+endobj
+14 0 obj
+<< /Length 1618 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 790 Td
+(10. Repeat the same tests after remediation and retain screenshots or test output for the) Tj T*
+(report.) Tj T*
+() Tj T*
+(7. Secure Software Engineering Practices) Tj T*
+() Tj T*
+(These vulnerabilities could have been prevented through:) Tj T*
+() Tj T*
+(- Server-side allowlists for roles and permissions.) Tj T*
+(- Centralized authorization middleware and resource ownership checks.) Tj T*
+(- Secure secret validation during startup.) Tj T*
+(- Modern password hashing standards.) Tj T*
+(- Schema validation for every API payload.) Tj T*
+(- Data-minimizing response DTOs.) Tj T*
+(- Threat modeling for healthcare data and QR workflows.) Tj T*
+(- Security-focused code review and pull-request checks.) Tj T*
+(- Dependency scanning and lockfile maintenance.) Tj T*
+(- Automated security regression tests and OWASP ZAP scans in CI.) Tj T*
+(- Fail-closed production builds that do not ignore type or lint errors.) Tj T*
+() Tj T*
+(8. Limitations) Tj T*
+() Tj T*
+(This initial report is based on source-code inspection. Database indexes, production deployment) Tj T*
+(headers, environment variables, live MongoDB permissions, and runtime behavior were not) Tj T*
+(independently verified. The final submission should clearly label black-box findings, white-box) Tj T*
+(findings, and assumptions.) Tj T*
+() Tj T*
+(9. Group Contributions) Tj T*
+() Tj T*
+(- Member 1: [Name, index, contribution]) Tj T*
+(- Member 2: [Name, index, contribution]) Tj T*
+(- Member 3: [Name, index, contribution]) Tj T*
+(- Member 4: [Name, index, contribution]) Tj T*
+() Tj T*
+ET
+
+endstream
+endobj
+15 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 16
+0000000000 65535 f 
+0000000023 00000 n 
+0000000072 00000 n 
+0000000161 00000 n 
+0000000288 00000 n 
+0000002830 00000 n 
+0000002957 00000 n 
+0000005812 00000 n 
+0000005939 00000 n 
+0000008650 00000 n 
+0000008778 00000 n 
+0000011499 00000 n 
+0000011628 00000 n 
+0000014575 00000 n 
+0000014704 00000 n 
+0000016375 00000 n 
+trailer
+<< /Size 16 /Root 1 0 R >>
+startxref
+16446
+%%EOF
