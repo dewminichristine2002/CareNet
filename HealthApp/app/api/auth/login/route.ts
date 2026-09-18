@@ -3,13 +3,15 @@ import { getDatabase } from "@/lib/mongodb"
 import { verifyPassword } from "@/lib/password"
 import { createToken, setAuthCookie } from "@/lib/auth"
 import type { User } from "@/lib/types"
+import { normalizeEmail } from "@/lib/security"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password } = body
+    const email = normalizeEmail(body.email)
+    const { password } = body
 
-    if (!email || !password) {
+    if (!email || typeof password !== "string") {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 

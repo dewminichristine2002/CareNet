@@ -1,30 +1,37 @@
-import { SignJWT, jwtVerify } from "jose"
+import { SignJWT, type JWTPayload } from "jose"
 import { cookies } from "next/headers"
+import { getJwtSecret, verifyToken, type UserPayload } from "./token"
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key-change-in-production")
+export type { UserPayload } from "./token"
 
-export interface UserPayload {
-  userId: string
-  email: string
-  role: "patient" | "doctor" | "admin" | "pharmacist"
-  name: string
+export function authCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    maxAge: 60 * 60 * 24 * 7,
+    path: "/",
+  }
 }
 
 export async function createToken(payload: UserPayload): Promise<string> {
-  return await new SignJWT(payload)
+  const tokenId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+  return await new SignJWT(payload as unknown as JWTPayload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
+    .setJti(tokenId)
     .setExpirationTime("7d")
-    .sign(secret)
+    .sign(getJwtSecret())
 }
 
-export async function verifyToken(token: string): Promise<UserPayload | null> {
-  try {
-    const verified = await jwtVerify(token, secret)
-    return verified.payload as UserPayload
-  } catch (error) {
-    return null
-  }
+async function isRevoked(payload: UserPayload): Promise<boolean> {
+  if (!payload.jti) return false
+
+  const { getDatabase } = await import("./mongodb")
+  const db = await getDatabase()
+  const revoked = await db.collection("revoked_sessions").findOne({ jti: payload.jti }, { projection: { _id: 1 } })
+  return Boolean(revoked)
 }
 
 export async function getSession(): Promise<UserPayload | null> {
@@ -33,23 +40,44 @@ export async function getSession(): Promise<UserPayload | null> {
 
   if (!token) return null
 
-  return await verifyToken(token.value)
+  const payload = await verifyToken(token.value)
+  if (!payload || (await isRevoked(payload))) return null
+
+  return payload
 }
 
 export async function setAuthCookie(token: string) {
   const cookieStore = await cookies()
-  cookieStore.set("auth-token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    path: "/",
-  })
+  cookieStore.set("auth-token", token, authCookieOptions())
 }
 
 export async function clearAuthCookie() {
   const cookieStore = await cookies()
   cookieStore.delete("auth-token")
+}
+
+export async function revokeCurrentSession() {
+  const cookieStore = await cookies()
+  const token = cookieStore.get("auth-token")
+  if (!token) return
+
+  const payload = await verifyToken(token.value)
+  if (!payload?.jti) return
+
+  const { getDatabase } = await import("./mongodb")
+  const db = await getDatabase()
+  await db.collection("revoked_sessions").updateOne(
+    { jti: payload.jti },
+    {
+      $setOnInsert: {
+        jti: payload.jti,
+        userId: payload.userId,
+        expiresAt: payload.exp ? new Date(payload.exp * 1000) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        revokedAt: new Date(),
+      },
+    },
+    { upsert: true },
+  )
 }
 
 export async function verifyAuth(): Promise<UserPayload | null> {

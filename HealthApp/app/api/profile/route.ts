@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { verifyAuth } from "@/lib/auth"
-import { hashPassword } from "@/lib/password"
+import { hashPassword, verifyPassword } from "@/lib/password"
 import { ObjectId } from "mongodb"
+import { isAllowedValue, isValidPassword, normalizeString, toObjectId } from "@/lib/security"
 
 export async function GET(request: Request) {
   try {
@@ -53,15 +54,15 @@ export async function PUT(request: Request) {
 
     const updateData: any = { updatedAt: new Date() }
 
-    if (name !== undefined) updateData.name = name
-    if (phone !== undefined) updateData.phone = phone
-    if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth
-    if (gender !== undefined) updateData.gender = gender
-    if (address !== undefined) updateData.address = address
-    if (allergies !== undefined) updateData.allergies = allergies
-    if (bloodGroup !== undefined) updateData.bloodGroup = bloodGroup
-    if (medicalHistory !== undefined) updateData.medicalHistory = medicalHistory
-    if (emergencyContact !== undefined) updateData.emergencyContact = emergencyContact
+    if (name !== undefined) updateData.name = normalizeString(name, 100)
+    if (phone !== undefined) updateData.phone = normalizeString(phone, 30)
+    if (dateOfBirth !== undefined) updateData.dateOfBirth = normalizeString(dateOfBirth, 30)
+    if (gender !== undefined && isAllowedValue(gender, ["male", "female", "other"] as const)) updateData.gender = gender
+    if (address !== undefined) updateData.address = normalizeString(address, 300)
+    if (allergies !== undefined) updateData.allergies = normalizeString(allergies, 500)
+    if (bloodGroup !== undefined) updateData.bloodGroup = normalizeString(bloodGroup, 10)
+    if (medicalHistory !== undefined) updateData.medicalHistory = normalizeString(medicalHistory, 1000)
+    if (emergencyContact !== undefined) updateData.emergencyContact = normalizeString(emergencyContact, 300)
 
     // read existing document
     const existing = await db.collection("users").findOne({ _id: new ObjectId(user.userId) })
@@ -71,10 +72,13 @@ export async function PUT(request: Request) {
 
     // Handle password change if provided
     if (currentPassword && newPassword) {
-      const bcrypt = await import("bcryptjs")
-      const isValidPassword = await bcrypt.compare(currentPassword, existing.password || "")
+      if (!isValidPassword(newPassword)) {
+        return NextResponse.json({ error: "New password must be between 8 and 128 characters" }, { status: 400 })
+      }
 
-      if (!isValidPassword) {
+      const isValidCurrentPassword = await verifyPassword(currentPassword, existing.password || "")
+
+      if (!isValidCurrentPassword) {
         return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 })
       }
 
@@ -128,13 +132,14 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const { changeLogId } = body || {}
-    if (!changeLogId) return NextResponse.json({ error: "Missing changeLogId" }, { status: 400 })
+    const changeLogObjectId = toObjectId(changeLogId)
+    if (!changeLogObjectId) return NextResponse.json({ error: "Missing changeLogId" }, { status: 400 })
 
     const db = await getDatabase()
     const changeLog = db.collection("profile_change_log")
     const users = db.collection("users")
 
-    const log = await changeLog.findOne({ _id: new ObjectId(changeLogId), userId: new ObjectId(user.userId) })
+    const log = await changeLog.findOne({ _id: changeLogObjectId, userId: new ObjectId(user.userId) })
     if (!log) return NextResponse.json({ error: "Change log not found" }, { status: 404 })
 
     // revert user document to the snapshot in 'before'
@@ -146,7 +151,7 @@ export async function POST(request: Request) {
     await users.updateOne({ _id: new ObjectId(id) }, { $set: before })
 
     // remove change log so it can't be used again
-    await changeLog.deleteOne({ _id: new ObjectId(changeLogId) })
+    await changeLog.deleteOne({ _id: changeLogObjectId })
 
     const updated = await users.findOne({ _id: new ObjectId(id) }, { projection: { password: 0 } })
     return NextResponse.json({ user: updated })

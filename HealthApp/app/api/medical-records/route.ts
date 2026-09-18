@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { getSession } from "@/lib/auth"
 import { ObjectId } from "mongodb"
+import { parsePagination } from "@/lib/security"
 
-export async function GET() {
+export async function GET(request?: Request) {
   try {
     const session = await getSession()
     if (!session) {
@@ -12,6 +13,8 @@ export async function GET() {
 
     const db = await getDatabase()
     const medicalRecordsCollection = db.collection("medical_records")
+    const { searchParams } = new URL(request?.url || "http://localhost/api/medical-records")
+    const { limit, skip, page } = parsePagination(searchParams)
 
     const query: any = {}
     if (session.role === "patient") {
@@ -20,7 +23,7 @@ export async function GET() {
       query.doctorId = new ObjectId(session.userId)
     }
 
-    const records = await medicalRecordsCollection.find(query).sort({ createdAt: -1 }).toArray()
+    const records = await medicalRecordsCollection.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray()
 
     // Populate user details
     const usersCollection = db.collection("users")
@@ -39,7 +42,7 @@ export async function GET() {
       }),
     )
 
-    return NextResponse.json({ records: populatedRecords })
+    return NextResponse.json({ records: populatedRecords, pagination: { page, limit } })
   } catch (error) {
     console.error("[v0] Get medical records error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

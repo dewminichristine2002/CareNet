@@ -25,12 +25,23 @@ afterAll(() => {
 })
 
 describe("POST /api/medical-records/create", () => {
-  const mockCollection = { insertOne: jest.fn() }
-  const mockDb = { collection: jest.fn(() => mockCollection) }
+  const mockMedicalRecordsCollection = { insertOne: jest.fn() }
+  const mockUsersCollection = { findOne: jest.fn() }
+  const mockAppointmentsCollection = { findOne: jest.fn() }
+  const mockDb = {
+    collection: jest.fn((name: string) => {
+      if (name === "medical_records") return mockMedicalRecordsCollection
+      if (name === "users") return mockUsersCollection
+      if (name === "appointments") return mockAppointmentsCollection
+      return {}
+    }),
+  }
 
   beforeEach(() => {
     jest.clearAllMocks()
     ;(getDatabase as jest.Mock).mockResolvedValue(mockDb)
+    mockUsersCollection.findOne.mockResolvedValue({ _id: new ObjectId(), role: "patient" })
+    mockAppointmentsCollection.findOne.mockResolvedValue({ _id: new ObjectId() })
   })
 
   it("creates a new medical record successfully", async () => {
@@ -38,7 +49,7 @@ describe("POST /api/medical-records/create", () => {
       userId: new ObjectId().toString(),
       role: "doctor",
     })
-    mockCollection.insertOne.mockResolvedValue({ insertedId: new ObjectId() })
+    mockMedicalRecordsCollection.insertOne.mockResolvedValue({ insertedId: new ObjectId() })
 
     const body = {
       patientId: new ObjectId().toString(),
@@ -59,7 +70,7 @@ describe("POST /api/medical-records/create", () => {
     expect(res.status).toBe(200)
     expect(data.success).toBe(true)
     expect(data.recordId).toBeDefined()
-    expect(mockCollection.insertOne).toHaveBeenCalledTimes(1)
+    expect(mockMedicalRecordsCollection.insertOne).toHaveBeenCalledTimes(1)
   })
 
   it("returns 401 if user is not a doctor", async () => {
@@ -100,7 +111,7 @@ describe("POST /api/medical-records/create", () => {
       userId: new ObjectId().toString(),
       role: "doctor",
     })
-    mockCollection.insertOne.mockRejectedValue(new Error("DB error"))
+    mockMedicalRecordsCollection.insertOne.mockRejectedValue(new Error("DB error"))
 
     const body = {
       patientId: new ObjectId().toString(),
@@ -127,6 +138,8 @@ describe("GET /api/medical-records", () => {
   const mockCollection = {
     find: jest.fn().mockReturnThis(),
     sort: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
     toArray: jest.fn(),
   }
   const mockUsersCollection = { findOne: jest.fn() }

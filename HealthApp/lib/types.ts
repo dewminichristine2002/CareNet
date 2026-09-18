@@ -78,6 +78,12 @@ export interface User {
   allergies?: string
   bloodGroup?: string
   medicalHistory?: string
+  oauthProviders?: {
+    google?: {
+      subject: string
+      linkedAt: Date
+    }
+  }
   emergencyContact?: string
   createdAt?: Date
   updatedAt?: Date
@@ -164,6 +170,8 @@ export interface HealthCard {
   patientId: ObjectId
   cardNumber: string
   qrCode: string
+  qrToken?: string
+  qrExpiresAt?: Date
   bloodGroup?: string
   allergies?: string[]
   emergencyContact?: { name: string; phone: string; relationship: string }

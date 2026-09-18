@@ -3,13 +3,20 @@ import { getDatabase } from "@/lib/mongodb"
 import { hashPassword } from "@/lib/password"
 import { createToken, setAuthCookie } from "@/lib/auth"
 import type { User } from "@/lib/types"
+import { isAllowedValue, isValidPassword, normalizeEmail, normalizeString } from "@/lib/security"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, name, role, phone, dateOfBirth, gender } = body
+    const email = normalizeEmail(body.email)
+    const name = normalizeString(body.name, 100)
+    const phone = normalizeString(body.phone, 30)
+    const dateOfBirth = normalizeString(body.dateOfBirth, 30)
+    const gender = isAllowedValue(body.gender, ["male", "female", "other"] as const) ? body.gender : undefined
+    const role = "patient"
+    const { password } = body
 
-    if (!email || !password || !name || !role) {
+    if (!email || !isValidPassword(password) || !name) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 

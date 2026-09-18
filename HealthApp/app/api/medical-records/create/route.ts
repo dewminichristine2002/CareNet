@@ -3,6 +3,7 @@ import { getDatabase } from "@/lib/mongodb"
 import { getSession } from "@/lib/auth"
 import type { MedicalRecord } from "@/lib/types"
 import { ObjectId } from "mongodb"
+import { doctorCanAccessPatient, isNonEmptyString, toObjectId } from "@/lib/security"
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,23 +15,37 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { patientId, appointmentId, diagnosis, symptoms, treatment, prescriptions, labResults, notes } = body
 
-    if (!patientId || !diagnosis || !symptoms || !treatment) {
+    if (!patientId || !isNonEmptyString(diagnosis) || !isNonEmptyString(treatment) || (!isNonEmptyString(symptoms) && !Array.isArray(symptoms))) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
+    const patientObjectId = toObjectId(patientId)
+    const doctorObjectId = toObjectId(session.userId)
+    const appointmentObjectId = appointmentId ? toObjectId(appointmentId) : null
+
+    if (!patientObjectId || !doctorObjectId || (appointmentId && !appointmentObjectId)) {
+      return NextResponse.json({ error: "Invalid identifier" }, { status: 400 })
+    }
+
     const db = await getDatabase()
+    const canAccess = await doctorCanAccessPatient(db, doctorObjectId, patientObjectId, appointmentObjectId)
+    if (!canAccess) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
     const medicalRecordsCollection = db.collection<MedicalRecord>("medical_records")
+    const normalizedSymptoms = Array.isArray(symptoms) ? symptoms.filter((symptom) => isNonEmptyString(symptom)) : [symptoms.trim()]
 
     const newRecord: MedicalRecord = {
-      patientId: new ObjectId(patientId),
-      doctorId: new ObjectId(session.userId),
-      appointmentId: appointmentId ? new ObjectId(appointmentId) : undefined,
-      diagnosis,
-      symptoms: Array.isArray(symptoms) ? symptoms : [symptoms],
-      treatment,
-      prescriptions: prescriptions || [],
-      labResults,
-      notes,
+      patientId: patientObjectId,
+      doctorId: doctorObjectId,
+      appointmentId: appointmentObjectId || undefined,
+      diagnosis: diagnosis.trim(),
+      symptoms: normalizedSymptoms.map((symptom) => symptom.trim()),
+      treatment: treatment.trim(),
+      prescriptions: Array.isArray(prescriptions) ? prescriptions.map(toObjectId).filter(Boolean) as ObjectId[] : [],
+      labResults: isNonEmptyString(labResults) ? labResults.trim() : undefined,
+      notes: isNonEmptyString(notes) ? notes.trim() : undefined,
       createdAt: new Date(),
       updatedAt: new Date(),
     }

@@ -3,6 +3,7 @@ import { getDatabase } from "@/lib/mongodb"
 import { getSession } from "@/lib/auth"
 import type { Appointment } from "@/lib/types"
 import { ObjectId } from "mongodb"
+import { isAllowedValue, isNonEmptyString, parsePagination } from "@/lib/security"
 
 const toObjectId = (id: unknown) => {
   try {
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
+    const { limit, skip, page } = parsePagination(searchParams)
 
     const db = await getDatabase()
     const appointmentsCollection = db.collection<Appointment>("appointments")
@@ -34,11 +36,11 @@ export async function GET(request: NextRequest) {
       query.doctorId = toObjectId(session.userId)
     }
 
-    if (status) {
+    if (status && isAllowedValue(status, ["scheduled", "completed", "cancelled", "no-show"] as const)) {
       query.status = status
     }
 
-    const appointments = await appointmentsCollection.find(query).sort({ date: -1 }).toArray()
+    const appointments = await appointmentsCollection.find(query).sort({ date: -1 }).skip(skip).limit(limit).toArray()
 
     // Populate user details
     const usersCollection = db.collection("users")
@@ -57,7 +59,7 @@ export async function GET(request: NextRequest) {
       }),
     )
 
-    return NextResponse.json({ appointments: populatedAppointments })
+    return NextResponse.json({ appointments: populatedAppointments, pagination: { page, limit } })
   } catch (error) {
     console.error("[v0] Get appointments error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -74,7 +76,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { doctorId, date, time, reason } = body
 
-    if (!doctorId || !date || !time || !reason) {
+    const queryDate = new Date(date)
+    if (!ObjectId.isValid(doctorId) || Number.isNaN(queryDate.getTime()) || !isNonEmptyString(time, 20) || !isNonEmptyString(reason, 500)) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
@@ -83,7 +86,6 @@ export async function POST(request: NextRequest) {
     const schedulesCollection = db.collection("doctor_schedules")
 
     // Check slot availability before creating appointment
-    const queryDate = new Date(date)
     const startOfDay = new Date(queryDate)
     startOfDay.setHours(0, 0, 0, 0)
     const endOfDay = new Date(queryDate)

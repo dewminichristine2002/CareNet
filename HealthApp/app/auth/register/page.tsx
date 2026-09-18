@@ -14,7 +14,7 @@ export default function RegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "patient" as "patient" | "doctor" | "admin" | "pharmacist",
+    role: "patient" as "patient",
     phone: "",
     dateOfBirth: "",
     gender: "male" as "male" | "female" | "other",
@@ -31,8 +31,8 @@ export default function RegisterPage() {
       return
     }
 
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters")
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters")
       return
     }
 
@@ -51,15 +51,7 @@ export default function RegisterPage() {
         throw new Error(data.error || "Registration failed")
       }
 
-      // Redirect based on role
-      const roleRoutes = {
-        patient: "/patient/dashboard",
-        doctor: "/doctor/dashboard",
-        admin: "/admin/dashboard",
-        pharmacist: "/pharmacist/dashboard",
-      }
-
-      router.push(roleRoutes[data.user.role as keyof typeof roleRoutes])
+      router.push("/patient/dashboard")
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -81,38 +73,6 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className={styles.authForm}>
           {error && <div className={styles.errorMessage}>{error}</div>}
-
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>I am a</label>
-            <div className={styles.radioGroup}>
-              {[
-                { value: "patient", icon: "🏥", label: "Patient" },
-                { value: "doctor", icon: "👨‍⚕️", label: "Doctor" },
-                { value: "pharmacist", icon: "💊", label: "Pharmacist" },
-                { value: "admin", icon: "⚙️", label: "Admin" },
-              ].map((role) => (
-                <label key={role.value} className={styles.radioCard}>
-                  <input
-                    type="radio"
-                    name="role"
-                    value={role.value}
-                    checked={formData.role === role.value}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        role: e.target.value as any,
-                      })
-                    }
-                    className={styles.radioInput}
-                  />
-                  <div className={styles.radioContent}>
-                    <div className={styles.radioIcon}>{role.icon}</div>
-                    <div className={styles.radioLabel}>{role.label}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
 
           <div className={styles.formGroup}>
             <label htmlFor="name" className={styles.formLabel}>

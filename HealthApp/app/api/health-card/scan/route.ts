@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { getSession } from "@/lib/auth"
+import { ObjectId } from "mongodb"
+import { doctorCanAccessPatient, isNonEmptyString, toObjectId } from "@/lib/security"
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,91 +12,58 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { cardNumber } = body
+    const { cardNumber, token } = body
 
-    if (!cardNumber) {
-      return NextResponse.json({ error: "Card number is required" }, { status: 400 })
+    if (!isNonEmptyString(cardNumber, 80) && !isNonEmptyString(token, 100)) {
+      return NextResponse.json({ error: "Health card token is required" }, { status: 400 })
     }
 
     const db = await getDatabase()
     const healthCardsCollection = db.collection("health_cards")
     const usersCollection = db.collection("users")
-    const medicalRecordsCollection = db.collection("medical_records")
-    const prescriptionsCollection = db.collection("prescriptions")
-    const appointmentsCollection = db.collection("appointments")
 
     // Find health card
-    const healthCard = await healthCardsCollection.findOne({ cardNumber })
+    const healthCard = token
+      ? await healthCardsCollection.findOne({ qrToken: token, qrExpiresAt: { $gt: new Date() } })
+      : await healthCardsCollection.findOne({ cardNumber: cardNumber.trim() })
 
     if (!healthCard) {
       return NextResponse.json({ error: "Invalid health card" }, { status: 404 })
     }
 
+    const doctorObjectId = toObjectId(session.userId)
+    if (!doctorObjectId || !(await doctorCanAccessPatient(db, doctorObjectId, healthCard.patientId as ObjectId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
     // Get patient details
-    const patient = await usersCollection.findOne({ _id: healthCard.patientId })
+    const patient = await usersCollection.findOne(
+      { _id: healthCard.patientId },
+      { projection: { password: 0, medicalHistory: 0, address: 0 } },
+    )
 
     if (!patient) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 })
     }
 
-    // Get medical history
-    const medicalRecords = await medicalRecordsCollection
-      .find({ patientId: healthCard.patientId })
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .toArray()
-
-    // Get prescriptions
-    const prescriptions = await prescriptionsCollection
-      .find({ patientId: healthCard.patientId })
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .toArray()
-
-    // Get appointments
-    const appointments = await appointmentsCollection
-      .find({ patientId: healthCard.patientId })
-      .sort({ date: -1 })
-      .limit(5)
-      .toArray()
-
     return NextResponse.json({
       patient: {
         _id: patient._id.toString(),
         name: patient.name,
-        email: patient.email,
         phone: patient.phone,
         dateOfBirth: patient.dateOfBirth,
         gender: patient.gender,
-        address: patient.address,
         allergies: patient.allergies,
         bloodGroup: patient.bloodGroup,
-        medicalHistory: patient.medicalHistory,
         emergencyContact: patient.emergencyContact, 
       },
       healthCard: {
-        ...healthCard,
         _id: healthCard._id.toString(),
-        patientId: healthCard.patientId.toString(),
+        cardNumber: healthCard.cardNumber,
       },
-      medicalHistory: medicalRecords.map((record) => ({
-        ...record,
-        _id: record._id.toString(),
-        patientId: record.patientId.toString(),
-        doctorId: record.doctorId?.toString(),
-      })),
-      prescriptions: prescriptions.map((prescription) => ({
-        ...prescription,
-        _id: prescription._id.toString(),
-        patientId: prescription.patientId.toString(),
-        doctorId: prescription.doctorId?.toString(),
-      })),
-      appointments: appointments.map((appointment) => ({
-        ...appointment,
-        _id: appointment._id.toString(),
-        patientId: appointment.patientId.toString(),
-        doctorId: appointment.doctorId?.toString(),
-      })),
+      medicalHistory: [],
+      prescriptions: [],
+      appointments: [],
     })
   } catch (error) {
     console.error("[v0] Scan health card error:", error)

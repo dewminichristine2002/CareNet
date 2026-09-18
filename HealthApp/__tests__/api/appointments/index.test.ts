@@ -32,15 +32,19 @@ describe("Appointments API (GET & POST)", () => {
     mockAppointmentsCollection = {
       find: jest.fn(() => ({
         sort: jest.fn(() => ({
-          toArray: jest.fn().mockResolvedValue([
-            {
-              _id: new ObjectId(),
-              doctorId: new ObjectId(),
-              patientId: new ObjectId(),
-              date: new Date(),
-              time: "09:00 AM",
-            },
-          ]),
+          skip: jest.fn(() => ({
+            limit: jest.fn(() => ({
+              toArray: jest.fn().mockResolvedValue([
+                {
+                  _id: new ObjectId(),
+                  doctorId: new ObjectId(),
+                  patientId: new ObjectId(),
+                  date: new Date(),
+                  time: "09:00 AM",
+                },
+              ]),
+            })),
+          })),
         })),
       })),
       insertOne: jest.fn().mockResolvedValue({ insertedId: new ObjectId() }),

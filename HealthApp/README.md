@@ -38,12 +38,25 @@ Add the following environment variable in the **Vars** section:
 \`\`\`
 MONGODB_URI=your_mongodb_atlas_connection_string
 JWT_SECRET=your_secret_key_here
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+OAUTH_REDIRECT_BASE_URL=http://localhost:3000
 \`\`\`
 
 ### 3. Access the Application
 - The application is ready to use once you add the MongoDB URI
 - Register as a new user (select your role: Patient, Doctor, Pharmacist, or Admin)
 - Login and explore the features
+
+### Google OpenID Connect setup
+
+Google sign-in uses the OpenID Connect Authorization Code Flow with S256 PKCE. Create a Web application OAuth client in Google Cloud Console and add this exact redirect URI:
+
+```text
+http://localhost:3000/api/auth/google/callback
+```
+
+Configure `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `OAUTH_REDIRECT_BASE_URL=http://localhost:3000` in the local environment. Never commit `.env.local` or expose the client secret. Google sign-in creates or signs in only patient accounts; staff roles must be assigned through the administrator workflow.
 
 ## User Roles & Features
 

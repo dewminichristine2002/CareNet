@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import styles from "../auth.module.css"
@@ -15,6 +15,22 @@ export default function LoginPage() {
   })
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const oauthError = params.get("error")
+    if (!oauthError) return
+
+    const messages: Record<string, string> = {
+      oauth_not_configured: "Google sign-in is not configured.",
+      oauth_invalid_state: "Google sign-in expired. Please try again.",
+      oauth_email_not_verified: "Your Google email address is not verified.",
+      oauth_account_link_required: "This email is already linked to another Google account. Contact an administrator to link it safely.",
+      oauth_failed: "Google sign-in failed. Please try again.",
+    }
+
+    setError(messages[oauthError] || "Sign-in failed. Please try again.")
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,6 +115,14 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
+
+        <div className={styles.authDivider}>
+          <span>or</span>
+        </div>
+
+        <a href="/api/auth/google" className={styles.oauthButton}>
+          Continue with Google
+        </a>
 
         <div className={styles.authFooter}>
           Don't have an account?{" "}

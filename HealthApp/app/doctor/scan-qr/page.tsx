@@ -18,6 +18,7 @@ interface PatientData {
 export default function ScanQRPage() {
   const router = useRouter()
   const [cardNumber, setCardNumber] = useState("")
+  const [qrToken, setQrToken] = useState("")
   const [loading, setLoading] = useState(false)
   const [patientData, setPatientData] = useState<PatientData | null>(null)
   const [error, setError] = useState("")
@@ -34,14 +35,17 @@ export default function ScanQRPage() {
    */
 
   //open close
-  const extractCardNumber = (raw: string): string | null => {
+  const extractCardPayload = (raw: string): { cardNumber?: string; token?: string } | null => {
     if (!raw) return null
 
     
     try {
       const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed.token === "string" && parsed.token.trim()) {
+        return { token: parsed.token.trim() }
+      }
       if (parsed && typeof parsed.cardNumber === "string" && parsed.cardNumber.trim()) {
-        return parsed.cardNumber.trim()
+        return { cardNumber: parsed.cardNumber.trim() }
       }
     } catch {
       
@@ -49,15 +53,15 @@ export default function ScanQRPage() {
 
     
     const kvMatch = raw.match(/cardNumber\s*[:=]\s*"?([A-Za-z0-9-_/]+)"?/i)
-    if (kvMatch?.[1]) return kvMatch[1].trim()
+    if (kvMatch?.[1]) return { cardNumber: kvMatch[1].trim() }
 
     
     const hcMatch = raw.match(/HC[A-Za-z0-9]+/i)
-    if (hcMatch?.[0]) return hcMatch[0].trim()
+    if (hcMatch?.[0]) return { cardNumber: hcMatch[0].trim() }
 
     
     const trimmed = raw.trim()
-    if (/^HC[A-Za-z0-9]+$/i.test(trimmed)) return trimmed
+    if (/^HC[A-Za-z0-9]+$/i.test(trimmed)) return { cardNumber: trimmed }
 
     return null
   }
@@ -70,6 +74,7 @@ export default function ScanQRPage() {
     setError("")
     setPatientData(null)
     setCardNumber("")
+    setQrToken("")
 
     setTimeout(() => {
       const scanner = new Html5QrcodeScanner(
@@ -82,19 +87,19 @@ export default function ScanQRPage() {
         async (decodedText) => {
           console.log("[QR] Raw scanned data:", decodedText)
 
-          const cn = extractCardNumber(decodedText)
-          if (!cn) {
-            setError("Invalid QR: couldn't find a health card number.")
+          const payload = extractCardPayload(decodedText)
+          if (!payload) {
+            setError("Invalid QR: couldn't find a health card token.")
             await stopCameraScanner()
             return
           }
 
-          // Fill only the card number in the input
-          setCardNumber(cn)
+          if (payload.cardNumber) setCardNumber(payload.cardNumber)
+          if (payload.token) setQrToken(payload.token)
 
           // Stop camera and fetch patient data
           await stopCameraScanner()
-          handleScanWithCardNumber(cn)
+          handleScanWithCardPayload(payload)
         },
         (scanErr) => {
           // keep silent to avoid noisy UI; logs help during dev
@@ -122,9 +127,8 @@ export default function ScanQRPage() {
 
   // ---- fetch ---------------------------------------------------------------
 
-  const handleScanWithCardNumber = async (rawCardNum: string) => {
-    const cn = extractCardNumber(rawCardNum)
-    if (!cn) {
+  const handleScanWithCardPayload = async (payload: { cardNumber?: string; token?: string }) => {
+    if (!payload.cardNumber && !payload.token) {
       setError("Invalid health card number.")
       return
     }
@@ -137,7 +141,7 @@ export default function ScanQRPage() {
       const response = await fetch("/api/health-card/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cardNumber: cn }),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -148,7 +152,8 @@ export default function ScanQRPage() {
       const data = await response.json()
       setPatientData(data)
       // ensure the input displays the clean value
-      setCardNumber(cn)
+      if (payload.cardNumber) setCardNumber(payload.cardNumber)
+      if (payload.token) setQrToken(payload.token)
     } catch (err: any) {
       setError(err?.message || "Something went wrong while scanning the health card.")
     } finally {
@@ -158,7 +163,8 @@ export default function ScanQRPage() {
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault()
-    await handleScanWithCardNumber(cardNumber)
+    const payload = extractCardPayload(cardNumber)
+    await handleScanWithCardPayload(payload || { cardNumber })
   }
 
   // ---- UI ------------------------------------------------------------------
@@ -384,7 +390,7 @@ export default function ScanQRPage() {
           onClose={() => setShowAddRecordModal(false)}
           onSuccess={() => {
             setShowAddRecordModal(false)
-            handleScanWithCardNumber(cardNumber)
+            handleScanWithCardPayload(qrToken ? { token: qrToken } : { cardNumber })
           }}
         />
       )}

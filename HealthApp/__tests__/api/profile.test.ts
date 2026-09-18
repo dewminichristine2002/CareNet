@@ -22,15 +22,12 @@ jest.mock('@/lib/auth', () => ({
 }))
 jest.mock('@/lib/password', () => ({
   hashPassword: jest.fn(async (p: string) => `hashed:${p}`),
-}))
-jest.mock('bcryptjs', () => ({
-  compare: jest.fn(async () => false),
+  verifyPassword: jest.fn(async () => false),
 }))
 
 import { getDatabase } from '@/lib/mongodb'
 import { verifyAuth } from '@/lib/auth'
-import { hashPassword } from '@/lib/password'
-import * as bcrypt from 'bcryptjs'
+import { hashPassword, verifyPassword } from '@/lib/password'
 import { ObjectId } from 'mongodb'
 
 // Helpers
@@ -112,10 +109,10 @@ describe('API /api/profile', () => {
     const { users, changeLog } = mkDb()
     const existing = { _id: new ObjectId(), name: 'Old', password: 'stored' }
     users.findOne.mockResolvedValue(existing)
-    ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
+    ;(verifyPassword as jest.Mock).mockResolvedValue(false)
 
     const res = await PUT(
-      req('PUT', { name: 'New', currentPassword: 'bad', newPassword: 'x' })
+      req('PUT', { name: 'New', currentPassword: 'bad', newPassword: 'new-password' })
     )
     const json = await res.json()
     expect(res.status).toBe(400)
@@ -137,7 +134,7 @@ describe('API /api/profile', () => {
     users.findOne
       .mockResolvedValueOnce(existing) // before
       .mockResolvedValueOnce({ _id, name: 'New', email: 'old@x.com', phone: '999' }) // after update
-    ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
+    ;(verifyPassword as jest.Mock).mockResolvedValue(true)
     ;(hashPassword as jest.Mock).mockResolvedValue('hashed:new')
     changeLog.insertOne.mockResolvedValue({ insertedId: new ObjectId() })
 
@@ -146,7 +143,7 @@ describe('API /api/profile', () => {
         name: 'New',
         phone: '999',
         currentPassword: 'ok',
-        newPassword: 'new',
+        newPassword: 'new-password',
       })
     )
     const json = await res.json()
