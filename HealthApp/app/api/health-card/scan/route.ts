@@ -46,6 +46,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 })
     }
 
+    const [medicalHistory, prescriptions, appointments] = await Promise.all([
+      db.collection("medical_records").find({ patientId: healthCard.patientId }).sort({ createdAt: -1 }).limit(100).toArray(),
+      db.collection("prescriptions").find({ patientId: healthCard.patientId }).sort({ createdAt: -1 }).limit(100).toArray(),
+      db.collection("appointments").find({ patientId: healthCard.patientId }).sort({ date: -1 }).limit(100).toArray(),
+    ])
+
+    const serializeDocument = (document: Record<string, any>) => ({
+      ...document,
+      _id: document._id?.toString(),
+      patientId: document.patientId?.toString(),
+      doctorId: document.doctorId?.toString(),
+      appointmentId: document.appointmentId?.toString(),
+      medicineId: document.medicineId?.toString(),
+      prescriptions: Array.isArray(document.prescriptions)
+        ? document.prescriptions.map((prescriptionId: ObjectId) => prescriptionId.toString())
+        : document.prescriptions,
+    })
+
     return NextResponse.json({
       patient: {
         _id: patient._id.toString(),
@@ -61,9 +79,9 @@ export async function POST(request: NextRequest) {
         _id: healthCard._id.toString(),
         cardNumber: healthCard.cardNumber,
       },
-      medicalHistory: [],
-      prescriptions: [],
-      appointments: [],
+      medicalHistory: medicalHistory.map(serializeDocument),
+      prescriptions: prescriptions.map(serializeDocument),
+      appointments: appointments.map(serializeDocument),
     })
   } catch (error) {
     console.error("[v0] Scan health card error:", error)

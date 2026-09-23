@@ -5,7 +5,7 @@ import type { HealthCard } from "@/lib/types"
 import { ObjectId } from "mongodb"
 import { isNonEmptyString } from "@/lib/security"
 
-const QR_TOKEN_TTL_MS = 15 * 60 * 1000
+const QR_TOKEN_TTL_MS = 2 * 60 * 1000
 
 function createQrToken() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`

@@ -333,23 +333,40 @@ function HealthCardView({ patient }: { patient: User })
  {
   const [healthCard, setHealthCard] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
-    fetchHealthCard()
-  }, [])
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined
 
-  const fetchHealthCard = async () => {
-    try {
-      const response = await fetch("/api/health-card")
-      if (!response.ok) throw new Error("Failed to fetch health card")
-      const data = await response.json()
-      setHealthCard(data.healthCard)
-    } catch (error) {
-      console.error("[v0] Fetch health card error:", error)
-    } finally {
-      setLoading(false)
+    const loadHealthCard = async () => {
+      try {
+        const response = await fetch("/api/health-card", { cache: "no-store" })
+        if (!response.ok) throw new Error("Failed to fetch health card")
+        const data = await response.json()
+        setHealthCard(data.healthCard)
+
+        const expiresAt = new Date(data.healthCard?.qrExpiresAt).getTime()
+        const refreshDelay = expiresAt - Date.now() + 1000
+        if (Number.isFinite(expiresAt)) {
+          refreshTimer = setTimeout(() => {
+            setRefreshing(true)
+            loadHealthCard()
+          }, Math.max(refreshDelay, 1000))
+        }
+      } catch (error) {
+        console.error("[v0] Fetch health card error:", error)
+      } finally {
+        setLoading(false)
+        setRefreshing(false)
+      }
     }
-  }
+
+    loadHealthCard()
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer)
+    }
+  }, [])
 
   if (loading) return <div>Loading...</div>
 
@@ -357,7 +374,9 @@ function HealthCardView({ patient }: { patient: User })
     <>
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Digital Health Card</h1>
-        <p className={styles.pageSubtitle}>Your digital health identification</p>
+        <p className={styles.pageSubtitle}>
+          {refreshing ? "Refreshing QR code..." : "Your digital health identification"}
+        </p>
       </div>
 
       <div
