@@ -19,6 +19,23 @@ export function normalizeEmail(value: unknown): string | undefined {
   return email
 }
 
+export function isValidPhone(value: unknown): value is string {
+  if (typeof value !== "string") return false
+  const phone = value.trim()
+  return /^[0-9]{10}$/.test(phone)
+}
+
+export function isValidDateOfBirth(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+
+  const [year, month, day] = value.split("-").map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  const today = new Date()
+  const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
+
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day && date <= todayUtc
+}
+
 export function isValidPassword(value: unknown): value is string {
   return typeof value === "string" && value.length >= 8 && value.length <= 128
 }

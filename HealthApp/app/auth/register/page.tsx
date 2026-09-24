@@ -111,6 +111,9 @@ export default function RegisterPage() {
             <input
               id="phone"
               type="tel"
+              inputMode="numeric"
+              pattern="[0-9]{10}"
+              maxLength={10}
               className={styles.formInput}
               placeholder="Enter your phone number"
               value={formData.phone}

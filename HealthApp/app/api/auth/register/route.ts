@@ -3,7 +3,7 @@ import { getDatabase } from "@/lib/mongodb"
 import { hashPassword } from "@/lib/password"
 import { createToken, setAuthCookie } from "@/lib/auth"
 import type { User } from "@/lib/types"
-import { isAllowedValue, isValidPassword, normalizeEmail, normalizeString } from "@/lib/security"
+import { isAllowedValue, isValidDateOfBirth, isValidPassword, isValidPhone, normalizeEmail, normalizeString } from "@/lib/security"
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,6 +18,14 @@ export async function POST(request: NextRequest) {
 
     if (!email || !isValidPassword(password) || !name) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    if (phone !== undefined && !isValidPhone(phone)) {
+      return NextResponse.json({ error: "Invalid phone number" }, { status: 400 })
+    }
+
+    if (dateOfBirth !== undefined && !isValidDateOfBirth(dateOfBirth)) {
+      return NextResponse.json({ error: "Date of birth must be a valid date and cannot be in the future" }, { status: 400 })
     }
 
     const db = await getDatabase()
