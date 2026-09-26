@@ -31,12 +31,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid health card" }, { status: 404 })
     }
 
+    // QR data exposure protection: possession of a card or token alone does not grant access.
+    // Verify the doctor's appointment relationship with this patient before returning details.
     const doctorObjectId = toObjectId(session.userId)
     if (!doctorObjectId || !(await doctorCanAccessPatient(db, doctorObjectId, healthCard.patientId as ObjectId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Get patient details
+    // Excessive QR medical-data exposure mitigation: exclude sensitive fields from the query.
     const patient = await usersCollection.findOne(
       { _id: healthCard.patientId },
       { projection: { password: 0, medicalHistory: 0, address: 0 } },
@@ -46,6 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 })
     }
 
+    // Return only explicitly selected patient fields instead of the full patient document.
     return NextResponse.json({
       patient: {
         _id: patient._id.toString(),
@@ -61,6 +64,8 @@ export async function POST(request: NextRequest) {
         _id: healthCard._id.toString(),
         cardNumber: healthCard.cardNumber,
       },
+      // Excessive QR medical-data exposure fix: do not include medical history,
+      // prescriptions, or appointments in the scan response.
       medicalHistory: [],
       prescriptions: [],
       appointments: [],

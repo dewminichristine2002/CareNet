@@ -28,6 +28,9 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDatabase()
+    // Object-level authorization (BOLA / IDOR protection): a doctor role alone is insufficient.
+    // Verify the requested patient is linked to this doctor through an appointment
+    // that is neither cancelled nor a no-show before allowing medical record creation.
     const canAccess = await doctorCanAccessPatient(db, doctorObjectId, patientObjectId, appointmentObjectId)
     if (!canAccess) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
