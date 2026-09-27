@@ -5,6 +5,24 @@ import { hashPassword } from "@/lib/password"
 import type { User } from "@/lib/types"
 import { isAllowedValue, isValidPassword, normalizeEmail, normalizeString, parsePagination, toObjectId } from "@/lib/security"
 
+function serializeStaffMember(staffMember: User) {
+  return {
+    _id: staffMember._id?.toString(),
+    email: staffMember.email,
+    name: staffMember.name,
+    role: staffMember.role,
+    phone: staffMember.phone,
+    dateOfBirth: staffMember.dateOfBirth,
+    gender: staffMember.gender,
+    specialization: staffMember.specialization,
+    licenseNumber: staffMember.licenseNumber,
+    department: staffMember.department,
+    hospitalId: staffMember.hospitalId?.toString(),
+    createdAt: staffMember.createdAt,
+    updatedAt: staffMember.updatedAt,
+  }
+}
+
 // Admin creates doctors, pharmacists, and other staff
 export async function POST(request: NextRequest) {
   try {
@@ -100,7 +118,10 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .toArray()
 
-    return NextResponse.json({ staff, pagination: { page, limit } })
+    const sanitizedStaff = staff.map(serializeStaffMember)
+    const responseBody = { staff: sanitizedStaff, pagination: { page, limit } }
+
+    return NextResponse.json(responseBody)
   } catch (error) {
     console.error("[v0] Fetch staff error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

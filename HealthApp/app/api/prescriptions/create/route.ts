@@ -28,14 +28,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    const db = await getDatabase()
-    const canAccess = await doctorCanAccessPatient(db, doctorObjectId, patientObjectId, appointmentObjectId)
-    if (!canAccess) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const prescriptionsCollection = db.collection<Prescription>("prescriptions")
-
     const newPrescription: Prescription = {
       patientId: patientObjectId,
       doctorId: doctorObjectId,
@@ -50,6 +42,15 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     }
 
+    const db = await getDatabase()
+    // Object-level authorization (BOLA / IDOR protection): verify the doctor has
+    // an appointment relationship with this patient immediately before the write.
+    const hasDoctorPatientRelationship = await doctorCanAccessPatient(db, doctorObjectId, patientObjectId, appointmentObjectId)
+    if (!hasDoctorPatientRelationship) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const prescriptionsCollection = db.collection<Prescription>("prescriptions")
     const result = await prescriptionsCollection.insertOne(newPrescription)
 
     return NextResponse.json({

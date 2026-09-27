@@ -27,16 +27,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid identifier" }, { status: 400 })
     }
 
-    const db = await getDatabase()
-    // Object-level authorization (BOLA / IDOR protection): a doctor role alone is insufficient.
-    // Verify the requested patient is linked to this doctor through an appointment
-    // that is neither cancelled nor a no-show before allowing medical record creation.
-    const canAccess = await doctorCanAccessPatient(db, doctorObjectId, patientObjectId, appointmentObjectId)
-    if (!canAccess) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const medicalRecordsCollection = db.collection<MedicalRecord>("medical_records")
     const normalizedSymptoms = Array.isArray(symptoms) ? symptoms.filter((symptom) => isNonEmptyString(symptom)) : [symptoms.trim()]
 
     const newRecord: MedicalRecord = {
@@ -53,6 +43,16 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     }
 
+    const db = await getDatabase()
+    // Object-level authorization (BOLA / IDOR protection): a doctor role alone is insufficient.
+    // Verify the requested patient is linked to this doctor through an appointment
+    // that is neither cancelled nor a no-show immediately before the write.
+    const hasDoctorPatientRelationship = await doctorCanAccessPatient(db, doctorObjectId, patientObjectId, appointmentObjectId)
+    if (!hasDoctorPatientRelationship) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const medicalRecordsCollection = db.collection<MedicalRecord>("medical_records")
     const result = await medicalRecordsCollection.insertOne(newRecord)
 
     return NextResponse.json({

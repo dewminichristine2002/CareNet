@@ -38,37 +38,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Excessive QR medical-data exposure mitigation: exclude sensitive fields from the query.
+    // Excessive QR medical-data exposure mitigation: only fetch fields needed to
+    // identify the patient and display emergency card details.
     const patient = await usersCollection.findOne(
       { _id: healthCard.patientId },
-      { projection: { password: 0, medicalHistory: 0, address: 0 } },
+      { projection: { name: 1, allergies: 1, bloodGroup: 1, emergencyContact: 1 } },
     )
 
     if (!patient) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 })
     }
 
-    // Return only explicitly selected patient fields instead of the full patient document.
+    // Return only minimum necessary card-scan data. Do not disclose sensitive
+    // clinical datasets, visit data, contact details, or account fields.
     return NextResponse.json({
       patient: {
         _id: patient._id.toString(),
         name: patient.name,
-        phone: patient.phone,
-        dateOfBirth: patient.dateOfBirth,
-        gender: patient.gender,
         allergies: patient.allergies,
         bloodGroup: patient.bloodGroup,
-        emergencyContact: patient.emergencyContact, 
+        emergencyContact: patient.emergencyContact,
       },
       healthCard: {
         _id: healthCard._id.toString(),
         cardNumber: healthCard.cardNumber,
       },
-      // Excessive QR medical-data exposure fix: do not include medical history,
-      // prescriptions, or appointments in the scan response.
-      medicalHistory: [],
-      prescriptions: [],
-      appointments: [],
     })
   } catch (error) {
     console.error("[v0] Scan health card error:", error)

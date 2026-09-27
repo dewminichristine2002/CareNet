@@ -1,0 +1,64 @@
+rules:
+  - id: carenet-02-weak-password-hashing
+    languages: [typescript]
+    severity: WARNING
+    message: "Issue 2: PBKDF2 uses only 1000 iterations."
+    paths:
+      include: ["lib/password.ts"]
+    pattern: pbkdf2Async($PASSWORD, $SALT, 1000, ...)
+
+  - id: carenet-03-patient-write-review
+    languages: [typescript]
+    severity: WARNING
+    message: "Issue 3 review: verify doctor-patient authorization before this write."
+    paths:
+      include:
+        - "app/api/medical-records/create/route.ts"
+        - "app/api/prescriptions/create/route.ts"
+    patterns:
+      - pattern: $COLLECTION.insertOne($RECORD)
+      - pattern-not-inside: |
+          const $AUTHORIZED = await doctorCanAccessPatient(...)
+          if (!$AUTHORIZED) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+          }
+          ...
+          $COLLECTION.insertOne($RECORD)
+
+  - id: carenet-04-medical-data-response-review
+    languages: [typescript]
+    severity: WARNING
+    message: "Issue 4 review: QR scan returns medical history; verify minimum necessary disclosure."
+    paths:
+      include: ["app/api/health-card/scan/route.ts"]
+    pattern: |
+      NextResponse.json({
+        ...,
+        medicalHistory: $HISTORY,
+        ...
+      })
+
+  - id: carenet-05-staff-response-review
+    languages: [typescript]
+    severity: WARNING
+    message: "Issue 5 review: verify password hashes are excluded before returning staff."
+    paths:
+      include: ["app/api/admin/staff/route.ts"]
+    patterns:
+      - pattern: |
+          NextResponse.json({ staff: $STAFF, ... })
+      - pattern-not: |
+          NextResponse.json({ staff: $STAFF.map(serializeStaffMember), ... })
+
+  - id: carenet-06-qr-patient-identifier
+    languages: [typescript]
+    severity: WARNING
+    message: "Issue 6: QR payload includes a patient identifier; review privacy and replay controls."
+    paths:
+      include: ["app/api/health-card/route.ts"]
+    pattern: |
+      JSON.stringify({
+        ...,
+        patientId: $ID,
+        ...
+      })

@@ -10,9 +10,8 @@ import { Html5QrcodeScanner } from "html5-qrcode"
 interface PatientData {
   patient: any
   healthCard: any
-  medicalHistory: any[]
-  prescriptions: any[]
-  appointments: any[]
+  medicalHistory?: any[]
+  prescriptions?: any[]
 }
 
 export default function ScanQRPage() {
@@ -272,26 +271,6 @@ export default function ScanQRPage() {
                   <span className={styles.infoValue}>{patientData.patient.name}</span>
                 </div>
                 <div className={styles.infoRow}>
-                  <span className={styles.infoLabel}>Email:</span>
-                  <span className={styles.infoValue}>{patientData.patient.email}</span>
-                </div>
-                <div className={styles.infoRow}>
-                  <span className={styles.infoLabel}>Phone:</span>
-                  <span className={styles.infoValue}>{patientData.patient.phone || "N/A"}</span>
-                </div>
-                <div className={styles.infoRow}>
-                  <span className={styles.infoLabel}>Gender:</span>
-                  <span className={styles.infoValue}>{patientData.patient.gender || "N/A"}</span>
-                </div>
-                <div className={styles.infoRow}>
-                  <span className={styles.infoLabel}>Date of Birth:</span>
-                  <span className={styles.infoValue}>
-                    {patientData.patient.dateOfBirth
-                      ? new Date(patientData.patient.dateOfBirth).toLocaleDateString()
-                      : "N/A"}
-                  </span>
-                </div>
-                <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Blood Group:</span>
                   <span className={styles.infoValue}>{patientData.patient.bloodGroup || "N/A"}</span>
                 </div>
@@ -311,7 +290,7 @@ export default function ScanQRPage() {
                 <h2 className={styles.cardTitle}>Medical History</h2>
               </div>
 
-              {patientData.medicalHistory.length > 0 ? (
+              {(patientData.medicalHistory?.length ?? 0) > 0 ? (
                 <table className={styles.table}>
                   <thead className={styles.tableHeader}>
                     <tr>
@@ -322,7 +301,7 @@ export default function ScanQRPage() {
                     </tr>
                   </thead>
                   <tbody className={styles.tableBody}>
-                    {patientData.medicalHistory.map((record) => (
+                    {patientData.medicalHistory?.map((record) => (
                       <tr key={record._id}>
                         <td>{new Date(record.createdAt).toLocaleDateString()}</td>
                         <td>{record.diagnosis}</td>
@@ -345,7 +324,7 @@ export default function ScanQRPage() {
                 <h2 className={styles.cardTitle}>Prescription History</h2>
               </div>
 
-              {patientData.prescriptions.length > 0 ? (
+              {(patientData.prescriptions?.length ?? 0) > 0 ? (
                 <table className={styles.table}>
                   <thead className={styles.tableHeader}>
                     <tr>
@@ -357,7 +336,7 @@ export default function ScanQRPage() {
                     </tr>
                   </thead>
                   <tbody className={styles.tableBody}>
-                    {patientData.prescriptions.map((prescription) => (
+                    {patientData.prescriptions?.map((prescription) => (
                       <tr key={prescription._id}>
                         <td>{new Date(prescription.createdAt).toLocaleDateString()}</td>
                         <td>{prescription.medicineName}</td>
