@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { getSession } from "@/lib/auth"
 import { ObjectId } from "mongodb"
-import { doctorCanAccessPatient, isNonEmptyString, toObjectId } from "@/lib/security"
+import { doctorCanAccessPatient, isNonEmptyString, objectIdQueryValues, toObjectId } from "@/lib/security"
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,17 +31,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid health card" }, { status: 404 })
     }
 
-    // QR data exposure protection: possession of a card or token alone does not grant access.
-    // Verify the doctor's appointment relationship with this patient before returning details.
+    // QR/card possession alone does not grant access. Only the doctor linked
+    // to this patient through a valid appointment can view or add clinical data.
     const doctorObjectId = toObjectId(session.userId)
     if (!doctorObjectId || !(await doctorCanAccessPatient(db, doctorObjectId, healthCard.patientId as ObjectId))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      return NextResponse.json(
+        { error: "Forbidden: this patient is not linked to your appointments" },
+        { status: 403 },
+      )
     }
 
     // Excessive QR medical-data exposure mitigation: only fetch fields needed to
     // identify the patient and display emergency card details.
+    const patientIdValues = objectIdQueryValues(healthCard.patientId)
     const patient = await usersCollection.findOne(
-      { _id: healthCard.patientId },
+      { _id: { $in: patientIdValues as any[] } },
       { projection: { name: 1, allergies: 1, bloodGroup: 1, emergencyContact: 1 } },
     )
 
@@ -49,8 +53,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 })
     }
 
-    // Return only minimum necessary card-scan data. Do not disclose sensitive
-    // clinical datasets, visit data, contact details, or account fields.
+    // Return only minimum necessary card-scan data. Clinical data is available
+    // through dedicated appointment-protected medical record/prescription APIs.
     return NextResponse.json({
       patient: {
         _id: patient._id.toString(),

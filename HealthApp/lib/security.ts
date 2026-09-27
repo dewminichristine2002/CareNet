@@ -45,6 +45,14 @@ export function toObjectId(value: unknown): ObjectId | null {
   return new ObjectId(value)
 }
 
+export function objectIdQueryValues(value: unknown): Array<ObjectId | string> {
+  if (value instanceof ObjectId) return [value]
+  if (typeof value !== "string" || !value.trim()) return []
+
+  const trimmed = value.trim()
+  return ObjectId.isValid(trimmed) ? [new ObjectId(trimmed), trimmed] : [trimmed]
+}
+
 export function isAllowedValue<T extends string>(value: unknown, allowed: readonly T[]): value is T {
   return typeof value === "string" && allowed.includes(value as T)
 }
@@ -65,15 +73,21 @@ export function parsePagination(searchParams: URLSearchParams) {
 export async function doctorCanAccessPatient(
   db: Db,
   doctorId: ObjectId,
-  patientId: ObjectId,
+  patientId: ObjectId | string,
   appointmentId?: ObjectId | null,
 ): Promise<boolean> {
-  const patient = await db.collection("users").findOne({ _id: patientId, role: "patient" }, { projection: { _id: 1 } })
+  const patientIdValues = objectIdQueryValues(patientId)
+  if (patientIdValues.length === 0) return false
+
+  const patient = await db.collection("users").findOne(
+    { _id: { $in: patientIdValues as any[] }, role: "patient" },
+    { projection: { _id: 1 } },
+  )
   if (!patient) return false
 
   const appointmentQuery: Record<string, unknown> = {
     doctorId,
-    patientId,
+    patientId: { $in: patientIdValues },
     status: { $nin: ["cancelled", "no-show"] },
   }
 

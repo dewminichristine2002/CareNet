@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { getSession } from "@/lib/auth"
 import { ObjectId } from "mongodb"
-import { parsePagination } from "@/lib/security"
+import { doctorCanAccessPatient, objectIdQueryValues, parsePagination, toObjectId } from "@/lib/security"
 
 export async function GET(request?: Request) {
   try {
@@ -14,13 +14,33 @@ export async function GET(request?: Request) {
     const db = await getDatabase()
     const prescriptionsCollection = db.collection("prescriptions")
     const { searchParams } = new URL(request?.url || "http://localhost/api/prescriptions")
+    const patientId = searchParams.get("patientId")
     const { limit, skip, page } = parsePagination(searchParams)
 
     const query: any = {}
     if (session.role === "patient") {
       query.patientId = new ObjectId(session.userId)
     } else if (session.role === "doctor") {
-      query.doctorId = new ObjectId(session.userId)
+      const doctorObjectId = toObjectId(session.userId)
+      if (!doctorObjectId) {
+        return NextResponse.json({ error: "Invalid session" }, { status: 400 })
+      }
+
+      if (patientId) {
+        const patientObjectId = toObjectId(patientId)
+        if (!patientObjectId) {
+          return NextResponse.json({ error: "Invalid patient" }, { status: 400 })
+        }
+
+        const hasDoctorPatientRelationship = await doctorCanAccessPatient(db, doctorObjectId, patientObjectId)
+        if (!hasDoctorPatientRelationship) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+
+        query.patientId = { $in: objectIdQueryValues(patientObjectId) as any[] }
+      } else {
+        query.doctorId = doctorObjectId
+      }
     }
 
     const prescriptions = await prescriptionsCollection.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray()
