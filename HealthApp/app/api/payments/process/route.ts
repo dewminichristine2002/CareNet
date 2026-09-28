@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const paymentsCollection = db.collection<Payment>("payments")
     const appointmentsCollection = db.collection("appointments")
 
-    const transactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+    const transactionId = `TXN${globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase()}`
 
     const newPayment: Payment = {
       userId: new ObjectId(session.userId),

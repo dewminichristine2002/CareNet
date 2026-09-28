@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       amount: Number.parseFloat(amount),
       paymentMethod,
       status: "completed",
-      transactionId: `TXN${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+      transactionId: `TXN${globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase()}`,
       createdAt: new Date(),
       updatedAt: new Date(),
     }

@@ -15,7 +15,7 @@ export function authCookieOptions() {
 }
 
 export async function createToken(payload: UserPayload): Promise<string> {
-  const tokenId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const tokenId = globalThis.crypto.randomUUID()
 
   return await new SignJWT(payload as unknown as JWTPayload)
     .setProtectedHeader({ alg: "HS256" })

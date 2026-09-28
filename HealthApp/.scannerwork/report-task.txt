@@ -1,0 +1,6 @@
+projectKey=CareNet360-Original
+serverUrl=http://localhost:9000
+serverVersion=26.9.0.129388
+dashboardUrl=http://localhost:9000/dashboard?id=CareNet360-Original
+ceTaskId=4e99079b-669e-4bb2-a61a-d75f31a51bfe
+ceTaskUrl=http://localhost:9000/api/ce/task?id=4e99079b-669e-4bb2-a61a-d75f31a51bfe

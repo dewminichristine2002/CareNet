@@ -8,7 +8,7 @@ import { isNonEmptyString } from "@/lib/security"
 const QR_TOKEN_TTL_MS = 2 * 60 * 1000
 
 function createQrToken() {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return globalThis.crypto.randomUUID()
 }
 
 function createQrCode(token: string) {
@@ -34,7 +34,7 @@ export async function GET() {
 
     if (!healthCard) {
       // Create a new health card
-      const cardNumber = `HC${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+      const cardNumber = `HC${globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase()}`
 
       const newHealthCard: HealthCard = {
         patientId: new ObjectId(session.userId),
